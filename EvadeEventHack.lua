@@ -119,7 +119,7 @@ end)
 -- Auto Jump (Giống nhảy bình thường, nhảy lên từ từ)
 local jumpCooldown = false
 task.spawn(function()
-    while task.wait(0.5) do
+    while task.wait(0.1) do
         if settings.AutoJump then
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("Humanoid") then
