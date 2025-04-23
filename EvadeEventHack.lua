@@ -101,9 +101,12 @@ task.spawn(function()
                             local botPosition = model.HumanoidRootPart.Position
                             -- Dịch chuyển cách 100m theo phương ngang
                             local newPos = botPosition + Vector3.new(math.random(80, 120), 0, math.random(80, 120))
-                            char:PivotTo(CFrame.new(newPos))
-                            -- Phát âm thanh vui khi tránh bot
-                            playAvoidBotSound()
+                            -- Kiểm tra để tránh rơi ra ngoài map
+                            if newPos.Y > 50 then
+                                char:PivotTo(CFrame.new(newPos))
+                                -- Phát âm thanh vui khi tránh bot
+                                playAvoidBotSound()
+                            end
                             break
                         end
                     end
@@ -116,7 +119,7 @@ end)
 -- Auto Jump (Giống nhảy bình thường, nhảy lên từ từ)
 local jumpCooldown = false
 task.spawn(function()
-    while task.wait(0.1) do
+    while task.wait(0.5) do
         if settings.AutoJump then
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("Humanoid") then
@@ -124,7 +127,7 @@ task.spawn(function()
                 if not jumpCooldown then
                     char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
                     jumpCooldown = true
-                    task.wait(1) -- Thời gian giữa các lần nhảy để nhân vật tiếp đất
+                    task.wait(1.5) -- Thời gian giữa các lần nhảy để nhân vật tiếp đất
                     jumpCooldown = false
                 end
             end
