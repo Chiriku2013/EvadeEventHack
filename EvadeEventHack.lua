@@ -69,6 +69,14 @@ end
 
 createToggleUi()
 
+-- Thêm âm thanh hú vui khi tránh bot
+local function playAvoidBotSound()
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://2415095738" -- ID âm thanh vui bạn chọn (hú vui)
+    sound.Parent = LocalPlayer.Character
+    sound:Play()
+end
+
 -- Auto Revive
 RunService.Stepped:Connect(function()
     if settings.AutoRevive then
@@ -82,7 +90,7 @@ end)
 
 -- Avoid Bot
 task.spawn(function()
-    while task.wait(0.3) do
+    while task.wait(0.5) do
         if settings.AvoidBot then
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("HumanoidRootPart") then
@@ -90,8 +98,12 @@ task.spawn(function()
                     if model:IsA("Model") and model ~= char and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") then
                         local dist = (char.HumanoidRootPart.Position - model.HumanoidRootPart.Position).Magnitude
                         if dist < 50 then
-                            local tpPos = model.HumanoidRootPart.Position + Vector3.new(100, 0, 0)
-                            char:PivotTo(CFrame.new(tpPos))
+                            local botPosition = model.HumanoidRootPart.Position
+                            -- Dịch chuyển cách 100m theo phương ngang
+                            local newPos = botPosition + Vector3.new(math.random(80, 120), 0, math.random(80, 120))
+                            char:PivotTo(CFrame.new(newPos))
+                            -- Phát âm thanh vui khi tránh bot
+                            playAvoidBotSound()
                             break
                         end
                     end
@@ -101,30 +113,36 @@ task.spawn(function()
     end
 end)
 
--- Auto Jump
+-- Auto Jump (Giống nhảy bình thường, nhảy lên từ từ)
+local jumpCooldown = false
 task.spawn(function()
-    while task.wait(0.25) do
+    while task.wait(0.1) do
         if settings.AutoJump then
             local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") then
+            if char and char:FindFirstChild("Humanoid") and not jumpCooldown then
                 char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                jumpCooldown = true
+                task.wait(1) -- Thời gian giữa các lần nhảy để nhảy đều đặn
+                jumpCooldown = false
             end
         end
     end
 end)
 
--- Auto Pickup vật phẩm
+-- Auto Pickup vật phẩm (lụm Easter Eggs, vật phẩm có thể nhặt)
 task.spawn(function()
     while task.wait(1) do
         if settings.AutoPickup then
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("HumanoidRootPart") then
                 for _, obj in ipairs(Workspace:GetDescendants()) do
-                    if obj:IsA("TouchTransmitter") and obj.Parent and obj.Parent:IsA("BasePart") then
+                    if obj:IsA("BasePart") and obj.Parent and obj.Parent:IsA("Model") then
                         local part = obj.Parent
-                        if (char.HumanoidRootPart.Position - part.Position).Magnitude > 5 then
+                        -- Kiểm tra vật phẩm có thể nhặt được (Easter Eggs, đồ vật có thể nhặt)
+                        if (part.Name == "EasterEgg" or part:IsA("Part")) and (char.HumanoidRootPart.Position - part.Position).Magnitude < 10 then
+                            -- Teleport đến vật phẩm
                             char:PivotTo(CFrame.new(part.Position + Vector3.new(0, 2, 0)))
-                            task.wait(0.4)
+                            task.wait(0.5) -- Thời gian nhặt đồ
                         end
                     end
                 end
