@@ -1,12 +1,12 @@
--- Evade Hack Mobile | By Chiriku | FIXED VERSION
+-- Evade Hack Mobile | By Chiriku | Final FIX + Auto Jump
 local plr = game.Players.LocalPlayer
 local rs = game:GetService("RunService")
-local eggsCollected = {}
+local uis = game:GetService("UserInputService")
 local gui = Instance.new("ScreenGui", plr:WaitForChild("PlayerGui"))
 gui.Name = "EvadeUI"
 gui.ResetOnSpawn = false
 
--- Toggle UI button
+-- Toggle UI Button
 local toggle = Instance.new("ImageButton", gui)
 toggle.Size = UDim2.new(0, 40, 0, 40)
 toggle.Position = UDim2.new(0, 10, 0, 10)
@@ -15,7 +15,7 @@ toggle.BackgroundTransparency = 1
 
 -- Main UI
 local main = Instance.new("Frame", gui)
-main.Size = UDim2.new(0, 240, 0, 180)
+main.Size = UDim2.new(0, 240, 0, 220)  -- tăng chiều cao để chứa Auto Jump
 main.Position = UDim2.new(0, 10, 0, 60)
 main.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 main.Visible = true
@@ -25,7 +25,7 @@ toggle.MouseButton1Click:Connect(function()
 	main.Visible = not main.Visible
 end)
 
--- Button function
+-- Button Creator
 local states = {}
 local function createBtn(text, y, callback)
 	local btn = Instance.new("TextButton", main)
@@ -38,46 +38,56 @@ local function createBtn(text, y, callback)
 	btn.TextSize = 14
 	btn.BorderSizePixel = 0
 
-	local state = false
 	states[text] = false
 	btn.MouseButton1Click:Connect(function()
-		state = not state
-		states[text] = state
-		btn.BackgroundColor3 = state and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
-		callback(state)
+		states[text] = not states[text]
+		btn.BackgroundColor3 = states[text] and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
+		callback(states[text])
 	end)
+end
+
+-- Anti-AFK
+for _, v in pairs(getconnections(plr.Idled)) do
+	pcall(function() v:Disable() end)
 end
 
 -- Auto Revive Self
 createBtn("Auto Revive", 10, function(on)
 	task.spawn(function()
-		while states["Auto Revive"] do task.wait(1)
+		while states["Auto Revive"] do
+			task.wait(1)
 			if plr.Character and plr.Character:FindFirstChild("Downed") then
-				plr:LoadCharacter()
+				pcall(function() plr:LoadCharacter() end)
 			end
 		end
 	end)
 end)
 
--- Avoid Bot (Safe TP)
+-- Avoid Bot (safe sideways teleport)
 createBtn("Avoid Bot", 50, function(on)
 	task.spawn(function()
-		while states["Avoid Bot"] do task.wait(0.3)
+		while states["Avoid Bot"] do
+			task.wait(0.5)
 			local char = plr.Character
 			local hrp = char and char:FindFirstChild("HumanoidRootPart")
 			if not hrp then continue end
 
-			for _, bot in ipairs(workspace:GetDescendants()) do
+			for _, model in ipairs(workspace:GetDescendants()) do
 				if not states["Avoid Bot"] then break end
-				if bot:IsA("Model") and bot:FindFirstChild("HumanoidRootPart") and bot.Name ~= plr.Name then
-					local bHRP = bot.HumanoidRootPart
-					local dist = (bHRP.Position - hrp.Position).Magnitude
-					if dist < 30 then
-						local away = (hrp.Position - bHRP.Position).Unit * 100
-						local targetPos = hrp.Position + away
-						targetPos = Vector3.new(targetPos.X, math.max(targetPos.Y, 5), targetPos.Z)
-						hrp.CFrame = CFrame.new(targetPos)
-						break
+				if model:IsA("Model") and model:FindFirstChild("HumanoidRootPart") then
+					-- Kiểm tra model có phải là người chơi hay không
+					local isPlayer = game.Players:GetPlayerFromCharacter(model)
+					if not isPlayer and model.Name ~= plr.Name then
+						local bHRP = model.HumanoidRootPart
+						local dist = (bHRP.Position - hrp.Position).Magnitude
+						if dist < 30 then
+							local dir = (hrp.Position - bHRP.Position).Unit
+							-- Chỉ dịch chuyển ngang (không thay đổi độ cao)
+							local offset = Vector3.new(dir.X * 100, 0, dir.Z * 100)
+							local safePos = hrp.Position + offset
+							hrp.CFrame = CFrame.new(safePos)
+							break
+						end
 					end
 				end
 			end
@@ -85,46 +95,63 @@ createBtn("Avoid Bot", 50, function(on)
 	end)
 end)
 
--- Auto Collect Easter Eggs
-createBtn("Auto Egg", 90, function(on)
+-- Auto Collect Items (mọi thứ có ProximityPrompt)
+createBtn("Auto Collect", 90, function(on)
+	local collected = {}
 	task.spawn(function()
-		while states["Auto Egg"] do
+		while states["Auto Collect"] do
 			local found = nil
 			for _,v in pairs(workspace:GetDescendants()) do
-				if not states["Auto Egg"] then break end
-				if v:IsA("ProximityPrompt") and v.Parent:IsA("BasePart") and v.Parent.Name:lower():find("egg") then
-					if not eggsCollected[v.Parent] then
+				if not states["Auto Collect"] then break end
+				if v:IsA("ProximityPrompt") and v.Parent:IsA("BasePart") then
+					local item = v.Parent
+					if not collected[item] then
 						found = v
+						collected[item] = true
 						break
 					end
 				end
 			end
 
 			if found then
-				local eggPart = found.Parent
-				eggsCollected[eggPart] = true
-
 				local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
 				if hrp then
-					-- Teleport to Egg safely
-					hrp.CFrame = eggPart.CFrame + Vector3.new(0, 3, 0)
+					-- Teleport ngay tới item
+					hrp.CFrame = found.Parent.CFrame + Vector3.new(0, 3, 0)
 					task.wait(0.3)
 					pcall(function() fireproximityprompt(found) end)
 				end
 
-				-- Wait for next egg
+				-- Đợi cho đến khi có item mới
 				repeat
 					task.wait(1)
 					local more = false
 					for _,v in pairs(workspace:GetDescendants()) do
-						if v:IsA("ProximityPrompt") and v.Parent:IsA("BasePart") and v.Parent.Name:lower():find("egg") then
-							if not eggsCollected[v.Parent] then more = true break end
+						if v:IsA("ProximityPrompt") and v.Parent:IsA("BasePart") and not collected[v.Parent] then
+							more = true
+							break
 						end
 					end
-				until not states["Auto Egg"] or more
+				until not states["Auto Collect"] or more
 			else
 				task.wait(1)
 			end
+		end
+	end)
+end)
+
+-- Auto Jump (để emote hop)
+createBtn("Auto Jump", 130, function(on)
+	task.spawn(function()
+		while states["Auto Jump"] do
+			local char = plr.Character
+			if char then
+				local humanoid = char:FindFirstChildOfClass("Humanoid")
+				if humanoid then
+					humanoid.Jump = true
+				end
+			end
+			task.wait(0.5)
 		end
 	end)
 end)
