@@ -90,7 +90,7 @@ end)
 
 -- Avoid Bot
 task.spawn(function()
-    while task.wait(0.5) do
+    while task.wait(1) do
         if settings.AvoidBot then
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("HumanoidRootPart") then
@@ -119,11 +119,14 @@ task.spawn(function()
     while task.wait(0.1) do
         if settings.AutoJump then
             local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") and not jumpCooldown then
-                char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                jumpCooldown = true
-                task.wait(1) -- Thời gian giữa các lần nhảy để nhảy đều đặn
-                jumpCooldown = false
+            if char and char:FindFirstChild("Humanoid") then
+                -- Kiểm tra nếu nhân vật chưa nhảy và không có cooldown
+                if not jumpCooldown then
+                    char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                    jumpCooldown = true
+                    task.wait(1) -- Thời gian giữa các lần nhảy để nhân vật tiếp đất
+                    jumpCooldown = false
+                end
             end
         end
     end
